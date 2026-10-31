@@ -55,6 +55,24 @@ foreach ($f in 'zh-CN-translation.js', 'zh-CN-review.js') {
     Write-Host "[+] 已安装 $f"
 }
 
+# ---------- 1.5 workbench 内核层汉化:替换 nls.messages 消息数组 ----------
+# assets 位于 out\vs\workbench\devin-webapp-host\assets,nls 文件在 out\ 下
+$outDir = (Resolve-Path (Join-Path $assets '..\..\..\..')).Path
+foreach ($pair in @(@('nls.messages.json','nls.messages.zh.json'),
+                    @('nls.messages.js','nls.messages.zh.js'))) {
+    $dst = Join-Path $outDir $pair[0]
+    $src = Join-Path $pkg $pair[1]
+    if (-not (Test-Path $dst)) { Write-Host "[=] 跳过 $($pair[0]) (不存在)"; continue }
+    $cur = [IO.File]::ReadAllText($dst, $utf8)
+    if ($cur.Contains('关闭对话框')) {
+        Write-Host "[=] $($pair[0]) 已是中文,跳过"
+    } else {
+        if (-not (Test-Path "$dst.zhorig")) { Copy-Item $dst "$dst.zhorig" }
+        Copy-Item $src $dst -Force
+        Write-Host "[+] 已汉化 $($pair[0]) (workbench 内核)"
+    }
+}
+
 # ---------- 2. editor-mode-menu: 注册 zh 语言项 + mapDeps ----------
 $menu = Get-ChildItem (Join-Path $assets 'entry-host-editor-mode-menu-*.js') |
         Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -148,9 +166,11 @@ if ($s2 -notmatch 'localStorage\.getItem\(`devin-language`\)===`zh`') { $ok = $f
 foreach ($f in 'zh-CN-translation.js', 'zh-CN-review.js') {
     if (-not (Test-Path (Join-Path $assets $f))) { $ok = $false; Write-Host "[!] 校验失败: 缺 $f" }
 }
+$nlsCheck = Join-Path $outDir 'nls.messages.json'
+if ((Test-Path $nlsCheck) -and (-not ([IO.File]::ReadAllText($nlsCheck, $utf8)).Contains('关闭对话框'))) { $ok = $false; Write-Host '[!] 校验失败: nls.messages.json 未汉化' }
 if ($ok) {
     Write-Host ''
     Write-Host '==== 汉化完成 ===='
-    Write-Host '重启 Devin(或 Ctrl+Shift+P -> Developer: Reload Window),'
+    Write-Host '完全退出并重启 Devin(顶部菜单栏由主进程在启动时加载,Reload Window 不会刷新),'
     Write-Host '然后在语言选项里选择 中文(简体)。'
 }

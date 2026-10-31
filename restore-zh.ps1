@@ -36,12 +36,13 @@ function Find-Assets {
 }
 
 $assets = Find-Assets
-$bak = Get-ChildItem (Join-Path $assets '*.zhorig')
+$outDir = (Resolve-Path (Join-Path $assets '..\..\..\..')).Path
+$bak = @(Get-ChildItem (Join-Path $assets '*.zhorig')) + @(Get-ChildItem (Join-Path $outDir '*.zhorig'))
 if (-not $bak) { Write-Host '没有找到 .zhorig 备份文件'; exit }
 foreach ($f in $bak) {
     $orig = $f.FullName -replace '\.zhorig$', ''
     Copy-Item $f.FullName $orig -Force
-    Write-Host "已还原 $($f.BaseName)"
+    Write-Host "已还原 $($f.Name -replace '\.zhorig$','')"
 }
 Remove-Item (Join-Path $assets 'zh-CN-translation.js'), (Join-Path $assets 'zh-CN-review.js') -ErrorAction SilentlyContinue
 Write-Host '已删除 zh-CN-*.js,重启 Devin 生效'
