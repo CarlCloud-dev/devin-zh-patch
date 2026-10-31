@@ -8,7 +8,11 @@
 
 ## 效果截图
 
-语言选项中注册并选中「中文(简体)」：
+设置页「显示语言」下拉框中新增并选中「中文(简体)」：
+
+![设置-显示语言](screenshots/settings-language.png)
+
+命令面板语言选择器：
 
 ![语言选择器](screenshots/language-picker.png)
 
