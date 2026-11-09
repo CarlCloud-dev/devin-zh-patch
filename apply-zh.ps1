@@ -124,12 +124,14 @@ $dirty = $false
 # 3a. 写路径: PUT users/ui-language 对 zh 跳过(服务端枚举不认 zh)
 $hsPatched = ($s2 -match '===`zh`\?Promise') -or ($s2 -match 'if\(t===`zh`\)')
 if (-not $hsPatched) {
-    $pat = '([A-Za-z_$][\w$]*)\.put\(`users/ui-language`,\{json:\{language:([A-Za-z_$][\w$]*)\}\}\)(\.json\(\))?'
+    $pat = '([A-Za-z_$][\w$]*(?:\([^\)]*\))?)\.[Pp][Uu][Tt]\(`/?users/ui-language`,\{(?:json|body):\{language:([A-Za-z_$][\w$]*)\}\}\)(\.json\(\))?'
     if ($s2 -notmatch $pat) { throw '未找到 users/ui-language PUT 调用,版本可能已变化' }
     $s2 = [regex]::Replace($s2, $pat, [System.Text.RegularExpressions.MatchEvaluator]{
         param($mm)
         $c = $mm.Groups[1].Value; $v = $mm.Groups[2].Value; $j = $mm.Groups[3].Value
-        "($v===``zh``?Promise.resolve({ui_language:$v}):$c.put(``users/ui-language``,{json:{language:$v}})$j)"
+        $bk = if ($mm.Value -match 'body:') { 'body' } else { 'json' }
+        $verb = if ($mm.Value -match '\.PUT\(') { 'PUT' } else { 'put' }
+        "($v===``zh``?Promise.resolve({ui_language:$v}):$c.$verb(``/users/ui-language``,{$($bk):{language:$v}})$j)"
     })
     $dirty = $true
     Write-Host '[+] index: zh 跳过云端保存 (PUT)'
@@ -138,12 +140,13 @@ if (-not $hsPatched) {
 # 3b. 读路径: GET users/ui-language 对 zh 返回 localStorage 值(启动时服务端 en 会覆盖 zh)
 $vsPatched = ($s2 -match 'localStorage\.getItem\(`devin-language`\)===`zh`')
 if (-not $vsPatched) {
-    $pat = '([A-Za-z_$][\w$]*)\.get\(`users/ui-language`,\{signal:([A-Za-z_$][\w$]*)\}\)(\.json\(\))?'
-    if ($s2 -notmatch $pat) { throw '未找到 users/ui-language GET 调用,版本可能已变化' }
+    $pat = '([A-Za-z_$][\w$]*(?:\([^\)]*\))?)\.[Gg][Ee][Tt]\(`/?users/ui-language`,\{signal:([A-Za-z_$][\w$]*)\}\)(\.json\(\))?'
+    if (-not ($s2 -match $pat)) { throw '未找到 users/ui-language GET 调用,版本可能已变化' }
     $s2 = [regex]::Replace($s2, $pat, [System.Text.RegularExpressions.MatchEvaluator]{
         param($mm)
         $c = $mm.Groups[1].Value; $v = $mm.Groups[2].Value; $j = $mm.Groups[3].Value
-        "(()=>{try{if(localStorage.getItem(``devin-language``)===``zh``)return{ui_language:``zh``}}catch{}return $c.get(``users/ui-language``,{signal:$v})$j})()"
+        $verb = if ($mm.Value -match '\.GET\(') { 'GET' } else { 'get' }
+        "(()=>{try{if(localStorage.getItem(``devin-language``)===``zh``)return{ui_language:``zh``}}catch{}return $c.$verb(``/users/ui-language``,{signal:$v})$j})()"
     })
     $dirty = $true
     Write-Host '[+] index: zh 读取走 localStorage (GET)'
